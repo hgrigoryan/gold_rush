@@ -1,0 +1,22 @@
+{
+  "name": "gold_rush",
+  "version": "1.0.0",
+  "description": "“Gold Rush” is an in game event that begins at a specified time and concludes after a designated period. During that period players are added into so-called temporary buckets of 200 people, where they compete together for rewards. Players collect gold by tapping on gold nuggets in the game.  Endpoints to support: event, report, leaderboard, claim",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.3"
+  }
+}

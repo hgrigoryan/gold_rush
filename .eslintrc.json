@@ -1,0 +1,31 @@
+{
+    "parserOptions": {
+        "ecmaVersion": "latest"
+    },
+
+    "env": {
+        "es6": true
+    },
+    "rules": {
+        "no-unused-vars": ["off"],
+        "indent": [
+            "error",
+            4
+        ],
+        "linebreak-style": 0,
+        "quotes": [
+            "error",
+            "single"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-useless-escape": ["off"],
+        "no-prototype-builtins": ["off"],
+        "object-curly-spacing": ["off"],
+        "array-bracket-spacing": ["off"],
+        "no-multiple-empty-lines": ["error", { "max": 2, "maxBOF": 1}],
+        "comma-dangle": ["off"]
+    }
+}
