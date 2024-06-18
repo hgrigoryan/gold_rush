@@ -5,6 +5,7 @@ const eventSchema = new mongoose.Schema({
         type: String,
         enum: ['started', 'ended'],
         default: 'started',
+        index: true,
         required: true
     },
     startDate: {
@@ -13,7 +14,7 @@ const eventSchema = new mongoose.Schema({
     },
     endDate: {
         type: Date,
-        required: true
+        default: Date.now + 300 * 1000  //300 seconds after start
     }
 })
 

@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const GoldRushController = require('../controllers/goldRushController');
+const eventController = require('./eventController');
 
 const START_INTERVAL = '*/305 * * * * *'; // Every 305 seconds
 const STOP_INTERVAL = '*/300 * * * * *'; // Every 300 seconds
@@ -9,7 +9,7 @@ let isStarted = false;
 async function startEvent() {
   try {
     console.log('Starting event...');
-    await GoldRushController.event('start');
+    await eventController('start');
     console.log('Event started successfully.');
     isStarted = true;
   } catch (error) {
@@ -20,7 +20,7 @@ async function startEvent() {
 async function stopEvent() {
   try {
     console.log('Stopping event...');
-    await GoldRushController.event('start');
+    await eventController('stop');
     console.log('Event stopped successfully.');
     isStarted = false;
   } catch (error) {

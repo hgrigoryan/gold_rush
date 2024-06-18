@@ -6,7 +6,7 @@ class ServerError extends Error {
     }
 }
 
-class ServerError extends Error {
+class UnauthorizedError extends Error {
     constructor() {
         super('UnauthorizedError error');
         this.name = 'UnauthorizedError';
