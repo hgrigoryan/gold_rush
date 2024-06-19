@@ -30,6 +30,13 @@ class BadRequestError extends Error {
     }
 }
 
+class UsernameOrPasswdordError extends BadRequestError {
+    constructor() {
+      super();
+      this.message = "Incorrect username or password."
+    }
+  }  
+
 class NameInUseError extends BadRequestError {
     constructor() {
         super();
@@ -50,6 +57,7 @@ module.exports = {
     UnauthorizedError,
     NotFoundError, 
     BadRequestError,
+    UsernameOrPasswdordError,
     NameInUseError,
     EmptyFieldsError,
 };

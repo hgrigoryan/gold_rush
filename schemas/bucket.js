@@ -22,7 +22,12 @@ const bucketSchema = new mongoose.Schema({
             goldAmount: {
               type: Number,
               default: 0
-            }
+            },
+            type: {
+              type: String,
+              enum: ['fish', 'dolphin', 'whale'],
+              required: true
+          },
           }
         ],
         validate: {
