@@ -1,7 +1,7 @@
 const User = require("../schemas/user");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const Error = require("../utils/HttpError")
+const Error = require("../utils/errors")
 
 
 async function register(req, res){
@@ -17,7 +17,7 @@ async function register(req, res){
         const name = await User.findOne({name: req.body.name});
         const email = await User.findOne({email: req.body.email});
         if(name !== null){
-            throw new Error.UsernameInUseError;
+            throw new Error.NameInUseError;
         }
         if(email !== null){
             throw new Error.EmailInUseError;
@@ -33,8 +33,10 @@ async function register(req, res){
         
         await user.save();
 
-        const token = jwt.sign(user.id, user.type, process.env.ACCESS_TOKEN_SECRET);
-        res.status("201").cookie("AccessToken", token, { httpOnly: true});
+        const token = jwt.sign({ id: user.id, type: user.type }, process.env.ACCESS_TOKEN_SECRET);
+        res.status("201")
+        .cookie("AccessToken", token, { httpOnly: true})
+        .send('User registered');
 
     }catch(err){
         res.json(err);
@@ -52,8 +54,10 @@ async function login(req, res){
             throw new Error.UsernameOrPasswdordError;
         }
 
-        const token = jwt.sign(user.id, user.type, process.env.ACCESS_TOKEN_SECRET);
-        res.status("200").cookie("AccessToken", token, { httpOnly: true});
+        const token = jwt.sign({ id: user.id, type: user.type }, process.env.ACCESS_TOKEN_SECRET);
+        res.status("200")
+        .cookie("AccessToken", token, { httpOnly: true})
+        .send('User loged in sccessfully');
            
     }catch(err){
         res.json(err);

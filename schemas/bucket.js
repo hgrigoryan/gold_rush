@@ -7,9 +7,22 @@ const bucketSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    cratedAt: {
-        type: Date,
-        default: Date.now
+    typesCount: {
+      fish: {
+        type: Number,
+        max: 150,
+        default: 0
+      },
+      dolphin: {
+        type: Number,
+        max: 40,
+        default: 0
+      },
+      whale: {
+        type: Number,
+        max: 10,
+        default: 0
+      }
     },
     usersData: {
         type: [
@@ -23,11 +36,6 @@ const bucketSchema = new mongoose.Schema({
               type: Number,
               default: 0
             },
-            type: {
-              type: String,
-              enum: ['fish', 'dolphin', 'whale'],
-              required: true
-          },
           }
         ],
         validate: {
@@ -36,7 +44,11 @@ const bucketSchema = new mongoose.Schema({
           },
           message: 'The users array exceeds the limit of 200.'
         }
-      }
+      },
+    cratedAt: {
+      type: Date,
+      default: Date.now
+    },
 })
 
 const Bucket = mongoose.model("Bucket", bucketSchema);

@@ -1,14 +1,15 @@
 const Event = require('../schemas/event');
 const Rank = require('../schemas/rank');
-const {NotFoundError, ServerError} = require('./errors')
+const Bucket = require('../schemas/bucket');
+const {NotFoundError} = require('./errors')
 
 async function eventController(action) {
     if(action === 'start') {
         try {
-            const event = new Event({});
+            const event = new Event();
             await event.save();    
         } catch(err) {
-            res.json(ServerError);
+            console.error(err);
         }
     }
     if(action === 'stop') {
@@ -17,14 +18,14 @@ async function eventController(action) {
             if(!event) {
                 throw(NotFoundError);
             }
-            //createing rewards document per bucket for ended event
+            const eventId = event.id;
             const RanksArray = await Bucket.aggregate([
-                { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
+                { $match: { eventId } },
                 { $unwind: "$usersData" },
                 { $sort: { "usersData.goldAmount": -1 } },
                 { 
                     $group: {
-                        bucketId: "$_id",
+                        _id: "$_id",
                         eventId: { $first: "$eventId" },
                         createdAt: { $first: "$createdAt" },
                         usersData: { $push: "$usersData" }
@@ -34,13 +35,13 @@ async function eventController(action) {
                     $project: {
                         eventId: 1,
                         createdAt: 1,
-                        rewards: {
+                        rank: {
                             $map: {
                                 input: { $range: [0, { $size: "$usersData" }] },
                                 as: "index",
                                 in: {
                                     userId: { $arrayElemAt: ["$usersData.userId", "$$index"] },
-                                    reward: { $subtract: [199, "$$index"] },
+                                    rank: { $subtract: [199, "$$index"] },
                                 }
                             }
                         }
@@ -60,11 +61,11 @@ async function eventController(action) {
             ]);
             
             for (const rank of RanksArray) {
-                await Rank.create(rank);
+                await (new Rank(rank)).save();
             }
 
         } catch(err) {
-            res.json(err);
+            console.error(err);
         }
     }
     

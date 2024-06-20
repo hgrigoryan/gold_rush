@@ -14,7 +14,9 @@ const eventSchema = new mongoose.Schema({
     },
     endDate: {
         type: Date,
-        default: Date.now + 300 * 1000  //300 seconds after start
+        default: function() {
+            return new Date(this.startDate.getTime() + 300 * 1000); // 300 seconds after start
+        }
     }
 })
 

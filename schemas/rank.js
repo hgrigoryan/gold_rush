@@ -16,12 +16,16 @@ const RankSchema = new mongoose.Schema({
         type: Number,
         max: 199
     },
+    claimComplete: {
+        type: Boolean,
+        default: false
+    },
     cratedAt: {
         type: Date,
         default: Date.now
     },
 })
 
-const Rank = mongoose.model("RewardsPerBucket", RankSchema);
+const Rank = mongoose.model("Rank", RankSchema);
 
 module.exports = Rank;

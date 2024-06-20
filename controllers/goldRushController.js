@@ -1,14 +1,15 @@
 const Event = require("../schemas/event");
-const User = require("../schemas/user");
+const Rank = require("../schemas/rank");
 const Bucket = require('../schemas/bucket');
-const Errors = require("../utils/errors");
+const mongoose = require('mongoose');
+const {NotFoundError, BadRequestError} = require("../utils/errors");
 
 async function getCurrentEvent(req, res) {
     try {
         const currentEvent = await Event.findOne({state: 'started'});
         if(!currentEvent) {
-            throw new Errors.NotFoundError;
-        }
+            throw new NotFoundError;
+        }  
         res.status(200).json({
             id: currentEvent.id,
             state: currentEvent.state,
@@ -20,57 +21,84 @@ async function getCurrentEvent(req, res) {
 }
 
 async function addReportedGoldAmount(req, res) {
-  //if eventId is not current, the server has to ignore that data, and respond with rewards to any request
-  //redirect to claim, give rewards to user
     const userId = req.params.userId;
     const eventId = req.params.eventId;
     const goldAmount = req.params.gold_amount;
-
-    const parsedGoldAmount = parseFloat(goldAmount);
-    if(isNaN(parsedGoldAmount) || parsedGoldAmount <= 0) {
-        return res.status(400).json('Invalid amount');
-    }
-
-    const event = await Event.findOne({id: eventId});
-    if(!event){
-        throw new Errors.NotFoundError;
-    } else if(event.status === 'ended') {
-        await claim();
-        return;
-    }
+    const userType = req.accessToken.type;
 
     try {
+        const parsedGoldAmount = parseFloat(goldAmount);
+        if(isNaN(parsedGoldAmount) || parsedGoldAmount <= 0) {
+            throw new BadRequestError;
+        }
+
+        const event = await Event.findOne({_id: eventId});
+        
+        if(!event){
+            throw new NotFoundError;
+        } else if(event.state === 'ended') {
+            //redirect to claim, return rank to user
+            await claim(req, res);
+            return;
+        }
+
         const eventBuckets = await Bucket.find({eventId});
-        if(eventBuckets.length > 0) {    
+        if(eventBuckets.length > 0) {  
+            //if user is in one of event's buckets add user's goldAmount  
             for(const bucket of eventBuckets) {
-              const userDataIndex = bucket.userData.findIndex(userData => userData.userId === userId);
-        
-              if(userDataIndex !== -1) {
-                bucket.userData[userDataIndex].amount += parsedGoldAmount;
-        
-                await bucket.save();
-        
-                res.status(200).json({message: 'User data updated successfully.'});
-                break;
-              } else {
-                //add user to bucket
-              }
-              
+                const userDataIndex = bucket.usersData.findIndex(userData => userData.userId.toString() === userId);
+  
+                if(userDataIndex !== -1) {
+                  bucket.usersData[userDataIndex].goldAmount += parsedGoldAmount;
+                  await bucket.save();
+                  res.status(200).json({message: 'User data updated successfully.'});
+                  return;
+                }
             }
-
+            //if user is not found in event's buckets, add user into corresponding bucket
+            // must be moved to config.js
+            const MAX_COUNT = {
+                fish: 2,
+                dolphin: 40,
+                whale: 10
+            };
+            
+            for(const bucket of eventBuckets) {
+                if (bucket.typesCount[userType] < MAX_COUNT[userType]){
+                    bucket.usersData.push({userId, goldAmount: parsedGoldAmount});
+                    bucket.typesCount[userType]++;
+                    await bucket.save();
+                    res.status(200).json({message: 'User added.'});
+                    return;
+                }
+            }
+            //if there is no plase in buckets for this type of user, add bucket, add user into it
+            const bucket = new Bucket({
+              eventId,
+              usersData : {
+                  userId,
+                  goldAmount: parsedGoldAmount
+              }
+            });
+            bucket.typesCount[userType]++;
+            await bucket.save();
+            res.status(200).json({message: 'New bucket added, user added.'});
+            return;
         } else {
-            const bucket = new Bucket(
-              {
-                  eventId,
-                  userData: {
-                      userId,
-                      goldAmount: parsedGoldAmount,
-                      type: req.accessToken.type
-                  }
-              }
-            )
-            }
-
+              //if there is no buckets for this event
+              const bucket = new Bucket({
+                    eventId,
+                    usersData : [
+                        {
+                            userId,
+                            goldAmount: parsedGoldAmount
+                        }
+                    ]
+              });
+              bucket.typesCount[userType]++;
+              await bucket.save();
+              res.status(200).json({message: 'First bucket added, user added.'});
+          }
     } catch(err) {
         res.json(err);
     }
@@ -80,11 +108,11 @@ async function getLeaderboard(req, res) {
     const userId = req.params.userId;
     const eventId = req.params.eventId;
 
-    const event = await Event.findOne({id: eventId});
+    const event = await Event.findOne({_id: eventId});
     if(!event){
-      throw new Errors.NotFoundError;
-    } else if(event.status === 'started') {
-      throw new Errors.BadRequestError;
+        throw new NotFoundError;
+    } else if(event.state === 'started') {
+        throw new BadRequestError;
     }
 
     const pipeline = [
@@ -92,27 +120,27 @@ async function getLeaderboard(req, res) {
           $match: {eventId: eventId}
         },
         {
-          $unwind: "$userData"
+          $unwind: "$usersData"
         },
         {
-          $match: {"userData.userId": userId}
+          $match: {"usersData.userId": userId}
         },
         {
           $group: {
             _id: "$_id",
             eventId: { $first: "$eventId" },
-            userData: { $push: "$userData" }
+            usersData: { $push: "$usersData" }
           }
         },
         {
           $project: {
             _id: 1,
             eventId: 1,
-            userData: { $eventId: { input: "$userData", as: "user", cond: { $eq: ["$$user.userId", userIdValue] } } }
+            usersData: { $eventId: { input: "$usersData", as: "user", cond: { $eq: ["$$user.userId", userIdValue] } } }
           }
         },
         {
-          $sort: {"userData.goldAmount": -1} // Sort userData array by amount in ascending order
+          $sort: {"usersData.goldAmount": -1} // Sort usersData array by amount in ascending order
         }
       ];
 
@@ -136,23 +164,27 @@ async function claim(req, res) {
     const eventId = req.params.eventId;
 
     try {
-      const event = await Event.findOne({id: eventId});
+      const event = await Event.findOne({_id: eventId});
       if(!event){
-        throw new Errors.NotFoundError;
-      } else if(event.status === 'started') {
-        throw new Errors.BadRequestError;
+        throw new NotFoundError;
+      } else if(event.state === 'started') {
+        throw new BadRequestError;
       }
 
-      const userRank = (await Rank.findOne({eventId, userId})).rank;
-      
-      if(!userRank){
-        throw new Errors.NotFoundError;
+      const userRank = await Rank.findOne({eventId, userId});
+
+      if(!userRank) {
+          throw new NotFoundError;
+      }
+      if(userRank.claimComplete) {
+          throw new BadRequestError;
       }
 
-      res.send(200).json({status: 'claim_complete', rank: userRank})
+      userRank.claimComplete = true;
+      res.send(200).json({status: 'claim_complete', rank: userRank.rank});
 
     } catch(err) {
-      res.json(err);
+          res.json(err);
     }
 }
 
