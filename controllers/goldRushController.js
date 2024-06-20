@@ -58,7 +58,7 @@ async function addReportedGoldAmount(req, res) {
             //if user is not found in event's buckets, add user into corresponding bucket
             // must be moved to config.js
             const MAX_COUNT = {
-                fish: 2,
+                fish: 150,
                 dolphin: 40,
                 whale: 10
             };
@@ -109,9 +109,10 @@ async function getLeaderboard(req, res) {
     const eventId = req.params.eventId;
 
     const event = await Event.findOne({_id: eventId});
+
     if(!event){
         throw new NotFoundError;
-    } else if(event.state === 'started') {
+    } else if(event.state === 'ended') {
         throw new BadRequestError;
     }
 
@@ -136,7 +137,7 @@ async function getLeaderboard(req, res) {
           $project: {
             _id: 1,
             eventId: 1,
-            usersData: { $eventId: { input: "$usersData", as: "user", cond: { $eq: ["$$user.userId", userIdValue] } } }
+            usersData: { $eventId: { input: "$usersData", as: "user", cond: { $eq: ["$$user.userId", userId] } } }
           }
         },
         {

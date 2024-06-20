@@ -35,7 +35,7 @@ async function eventController(action) {
                     $project: {
                         eventId: 1,
                         createdAt: 1,
-                        rank: {
+                        ranks: {
                             $map: {
                                 input: { $range: [0, { $size: "$usersData" }] },
                                 as: "index",
@@ -47,14 +47,14 @@ async function eventController(action) {
                         }
                     }
                 },
-                { $unwind: "$rewards" },
+                { $unwind: "$ranks" },
                 {
                     $replaceRoot: {
                         newRoot: {
                             eventId: "$eventId",
-                            userId: "$rewards.userId",
-                            createdAt: "$rewards.createdAt",
-                            reward: "$rewards.reward"
+                            userId: "$ranks.userId",
+                            createdAt: "$ranks.createdAt",
+                            rank: "$ranks.rank"
                         }
                     }
                 }

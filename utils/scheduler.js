@@ -9,7 +9,7 @@ async function startEvent() {
         console.log('Event started successfully.');
         isStarted = true;
         // Schedule stop after 300 seconds (5 minutes)
-        setTimeout(stopEvent, 900 * 1000);
+        setTimeout(stopEvent, 300 * 1000);
     } catch (err) {
         console.error('Failed to start event:', err.message);
     }
