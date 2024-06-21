@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const {UnauthorizedError} = require("../utils/errors");
+const {UnauthorizedError, EmptyFieldsError} = require("../utils/errors");
 
 async function verifyJWT(req, res, next){
     try{
@@ -16,7 +16,15 @@ async function verifyJWT(req, res, next){
 
         // Check if token is valid, will throw an error if invalid or expired
         const decodedToken = await jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-            
+        
+        const userId = req.params?.userId;
+        if(!userId) {
+            throw new EmptyFieldsError('userId');
+        }
+        if(userId !== decodedToken.id) {
+            throw new UnauthorizedError;
+        }
+        
         req.accessToken = decodedToken;
         req.authorized = true;         
 

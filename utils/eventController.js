@@ -32,7 +32,6 @@ async function eventController(action) {
 
                 RanksArray = RanksArray.concat(usersDataWithRanks);
             });
-            console.log(RanksArray);
             await Rank.insertMany(RanksArray);
             
         } catch(err) {
