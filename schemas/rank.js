@@ -14,6 +14,7 @@ const RankSchema = new mongoose.Schema({
     },
     rank: {
         type: Number,
+        min: 0,
         max: 199
     },
     claimComplete: {

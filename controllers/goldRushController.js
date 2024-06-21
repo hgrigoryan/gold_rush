@@ -1,7 +1,6 @@
 const Event = require("../schemas/event");
 const Rank = require("../schemas/rank");
 const Bucket = require('../schemas/bucket');
-const mongoose = require('mongoose');
 const {NotFoundError, BadRequestError} = require("../utils/errors");
 
 async function getCurrentEvent(req, res) {
@@ -108,55 +107,33 @@ async function getLeaderboard(req, res) {
     const userId = req.params.userId;
     const eventId = req.params.eventId;
 
-    const event = await Event.findOne({_id: eventId});
+    try {
+        const event = await Event.findOne({_id: eventId});
 
-    if(!event){
-        throw new NotFoundError;
-    } else if(event.state === 'ended') {
-        throw new BadRequestError;
-    }
-
-    const pipeline = [
-        {
-          $match: {eventId: eventId}
-        },
-        {
-          $unwind: "$usersData"
-        },
-        {
-          $match: {"usersData.userId": userId}
-        },
-        {
-          $group: {
-            _id: "$_id",
-            eventId: { $first: "$eventId" },
-            usersData: { $push: "$usersData" }
-          }
-        },
-        {
-          $project: {
-            _id: 1,
-            eventId: 1,
-            usersData: { $eventId: { input: "$usersData", as: "user", cond: { $eq: ["$$user.userId", userId] } } }
-          }
-        },
-        {
-          $sort: {"usersData.goldAmount": -1} // Sort usersData array by amount in ascending order
+        if(!event) {
+            throw new NotFoundError;
+        } else if(event.state === 'ended') {
+            throw new BadRequestError;
         }
-      ];
 
-      try {
-        const leaderBoard = await Bucket.aggregate(pipeline);
-    
-        if (leaderBoard.length > 0) {
-            //nedd to add ranking info
+        const bucket = await Bucket.findOne({
+            eventId,
+            'usersData.userId': userId
+        });
+
+        if(bucket) {
+            const leaderBoard = bucket.usersData
+              .sort((a, b) => b.goldAmount - a.goldAmount)
+              .map((userData, index) => ({
+                ...userData.toObject(),
+                rank: 199 - index
+              }));
             res.status(200).json(leaderBoard);
         } else {
             res.status(200).json('No matching document found.');
-        }
-
-      } catch (err) {
-        res.json(err);
+        } 
+      } catch(err) {
+          res.json(err);
       }
 }
 
@@ -165,24 +142,33 @@ async function claim(req, res) {
     const eventId = req.params.eventId;
 
     try {
-      const event = await Event.findOne({_id: eventId});
-      if(!event){
-        throw new NotFoundError;
-      } else if(event.state === 'started') {
-        throw new BadRequestError;
-      }
+        const event = await Event.findOne({_id: eventId});
+        if(!event) {
+            throw new NotFoundError;
+        } else if(event.state === 'started') {
+            throw new BadRequestError;
+        }
 
-      const userRank = await Rank.findOne({eventId, userId});
+        const userRank = await Rank.findOne({eventId, userId});
 
-      if(!userRank) {
-          throw new NotFoundError;
-      }
-      if(userRank.claimComplete) {
-          throw new BadRequestError;
-      }
+        if(!userRank) {
+            throw new NotFoundError;
+        }
+        if(userRank.claimComplete) {
+            throw new BadRequestError;
+        }
 
-      userRank.claimComplete = true;
-      res.send(200).json({status: 'claim_complete', rank: userRank.rank});
+        res.status(200).json({status: 'claim_complete', rank: userRank.rank});
+        res.on('finish', async () => {
+          if (res.statusCode === 200) {
+              userRank.claimComplete = true;
+              try {
+                  await userRank.save();
+              } catch(err) {
+                  console.error('Failed to update user rank:', err);
+              }
+          }
+        });
 
     } catch(err) {
           res.json(err);

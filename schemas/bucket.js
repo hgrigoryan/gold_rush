@@ -10,16 +10,19 @@ const bucketSchema = new mongoose.Schema({
     typesCount: {
       fish: {
         type: Number,
+        min: 0,
         max: 150,
         default: 0
       },
       dolphin: {
         type: Number,
+        min: 0,
         max: 40,
         default: 0
       },
       whale: {
         type: Number,
+        min: 0,
         max: 10,
         default: 0
       }

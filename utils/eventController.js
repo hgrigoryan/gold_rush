@@ -19,51 +19,22 @@ async function eventController(action) {
                 throw(NotFoundError);
             }
             const eventId = event.id;
-            const RanksArray = await Bucket.aggregate([
-                { $match: { eventId } },
-                { $unwind: "$usersData" },
-                { $sort: { "usersData.goldAmount": -1 } },
-                { 
-                    $group: {
-                        _id: "$_id",
-                        eventId: { $first: "$eventId" },
-                        createdAt: { $first: "$createdAt" },
-                        usersData: { $push: "$usersData" }
-                    }
-                },
-                {
-                    $project: {
-                        eventId: 1,
-                        createdAt: 1,
-                        ranks: {
-                            $map: {
-                                input: { $range: [0, { $size: "$usersData" }] },
-                                as: "index",
-                                in: {
-                                    userId: { $arrayElemAt: ["$usersData.userId", "$$index"] },
-                                    rank: { $subtract: [199, "$$index"] },
-                                }
-                            }
-                        }
-                    }
-                },
-                { $unwind: "$ranks" },
-                {
-                    $replaceRoot: {
-                        newRoot: {
-                            eventId: "$eventId",
-                            userId: "$ranks.userId",
-                            createdAt: "$ranks.createdAt",
-                            rank: "$ranks.rank"
-                        }
-                    }
-                }
-            ]);
-            
-            for (const rank of RanksArray) {
-                await (new Rank(rank)).save();
-            }
+            const bucketsArray = await Bucket.find({eventId});
 
+            let RanksArray = [];
+            bucketsArray.forEach(bucket => {
+                const sortedUsersData = bucket.usersData.sort((a, b) => b.goldAmount - a.goldAmount);
+                const usersDataWithRanks = sortedUsersData.map((user, index) => ({
+                    eventId: bucket.eventId,
+                    userId: user.userId,
+                    rank: 199 - index
+                    }));
+
+                RanksArray = RanksArray.concat(usersDataWithRanks);
+            });
+            console.log(RanksArray);
+            await Rank.insertMany(RanksArray);
+            
         } catch(err) {
             console.error(err);
         }
